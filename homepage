@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+
+    <!-- Permite adaptar la página a computadoras y celulares -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Inventario. Gestión de Stock</title>
+
+    <!-- =====================================================
+         ESTILOS GENERALES DE LA PÁGINA
+         ===================================================== -->
+
+    <style>
+
+        /* -----------------------------------------------------
+           1. CONFIGURACIÓN GENERAL
+           ----------------------------------------------------- */
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #000000;
+            color: #172033;
+            min-height: 100vh;
+            padding: 30px 20px;
+
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+
+        /* -----------------------------------------------------
+           2. CONTENEDOR PRINCIPAL
+           ----------------------------------------------------- */
+
+        .contenedor {
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+
+        /* -----------------------------------------------------
+           3. ENCABEZADO
+           ----------------------------------------------------- */
+
+        .encabezado {
+            background-color: #FFFFFF;
+            border-radius: 16px;
+            padding: 35px 25px;
+            margin-bottom: 25px;
+            text-align: center;
+
+            border: 1px solid #E0E0E0;
+        }
+
+        .encabezado h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #172033;
+            margin-bottom: 12px;
+            line-height: 1.3;
+        }
+
+        .encabezado p {
+            font-size: 16px;
+            color: #606A7B;
+            line-height: 1.6;
+        }
+
+
+        /* -----------------------------------------------------
+           4. PANEL DE ACCESO
+           ----------------------------------------------------- */
+
+        .panel-principal {
+            background-color: #FFFFFF;
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid #E0E0E0;
+        }
+
+        .titulo-seccion {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .titulo-seccion h2 {
+            font-size: 24px;
+            color: #172033;
+            margin-bottom: 10px;
+        }
+
+        .titulo-seccion p {
+            font-size: 15px;
+            color: #606A7B;
+            line-height: 1.6;
+        }
+
+
+        /* -----------------------------------------------------
+           5. DISTRIBUCIÓN DE LAS DOS VERSIONES
+           
+           En computadoras:
+           Los paneles aparecen uno al lado del otro.
+
+           En celulares:
+           Los paneles aparecen uno debajo del otro.
+           ----------------------------------------------------- */
+
+        .opciones {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 24px;
+        }
+
+
+        /* -----------------------------------------------------
+           6. RECUADROS BLANCOS DE CADA APLICACIÓN
+           ----------------------------------------------------- */
+
+        .tarjeta {
+            background-color: #FFFFFF;
+            border: 1px solid #D9DEE7;
+            border-radius: 14px;
+            padding: 28px 22px;
+            text-align: center;
+
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+
+            transition:
+                transform 0.2s ease,
+                box-shadow 0.2s ease;
+        }
+
+        .tarjeta:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.10);
+        }
+
+
+        /* -----------------------------------------------------
+           7. ICONOS DE COMPUTADORA Y CELULAR
+           ----------------------------------------------------- */
+
+        .icono {
+            width: 48px;
+            height: 48px;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            background-color: #EEF2FF;
+            border-radius: 16px;
+
+            color: #204BE0;
+            font-size: 27px;
+
+            margin-bottom: 10px;
+        }
+
+
+        /* -----------------------------------------------------
+           8. TÍTULOS Y DESCRIPCIONES DE LAS TARJETAS
+           ----------------------------------------------------- */
+
+        .tarjeta h3 {
+            font-size: 21px;
+            color: #172033;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .tarjeta p {
+            font-size: 15px;
+            color: #606A7B;
+            line-height: 1.7;
+            margin-bottom: 24px;
+
+            flex-grow: 1;
+        }
+
+
+        /* -----------------------------------------------------
+           9. BOTONES AZULES DE ACCESO
+           ----------------------------------------------------- */
+
+        .boton {
+            display: inline-block;
+            width: 100%;
+            max-width: 340px;
+
+            background-color: #204BE0;
+            color: #FFFFFF;
+
+            text-decoration: none;
+            text-align: center;
+
+            padding: 16px 18px;
+            border-radius: 9px;
+
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.5;
+
+            border: 2px solid #204BE0;
+
+            transition:
+                background-color 0.2s ease,
+                border-color 0.2s ease,
+                transform 0.2s ease;
+        }
+
+        .boton:hover {
+            background-color: #1739B5;
+            border-color: #1739B5;
+        }
+
+        .boton:focus-visible {
+            outline: 3px solid #86A4FF;
+            outline-offset: 4px;
+        }
+
+
+        /* -----------------------------------------------------
+           10. PIE DE PÁGINA
+           ----------------------------------------------------- */
+
+        .pie {
+            background-color: #FFFFFF;
+            border: 1px solid #E0E0E0;
+            border-radius: 12px;
+
+            margin-top: 25px;
+            padding: 20px;
+
+            text-align: center;
+        }
+
+        .pie p {
+            color: #606A7B;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+
+        /* -----------------------------------------------------
+           11. ADAPTACIÓN PARA CELULARES
+           ----------------------------------------------------- */
+
+        @media (max-width: 700px) {
+
+            body {
+                padding: 15px 12px;
+            }
+
+            .encabezado {
+    padding: 16px 12px;
+    margin-bottom: 10px;
+}
+
+            .encabezado h1 {
+                font-size: 25px;
+            }
+
+            .encabezado p {
+                font-size: 14px;
+            }
+
+           .panel-principal {
+    padding: 14px 10px;
+}
+
+            .titulo-seccion h2 {
+                font-size: 21px;
+            }
+
+            .titulo-seccion p {
+                font-size: 14px;
+            }
+
+            /* Una tarjeta debajo de la otra en el celular */
+
+            .opciones {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+            .tarjeta {
+                padding: 14px 8px;
+            }
+
+            .tarjeta h3 {
+                font-size: 20px;
+            }
+
+            .boton {
+                max-width: 100%;
+                font-size: 13px;
+                padding: 15px 12px;
+            }
+
+            .pie {
+                margin-top: 16px;
+                padding: 16px;
+            }
+        }
+
+
+        /* -----------------------------------------------------
+           12. ADAPTACIÓN PARA PANTALLAS MUY PEQUEÑAS
+           ----------------------------------------------------- */
+
+        @media (max-width: 360px) {
+
+            .encabezado h1 {
+                font-size: 22px;
+            }
+
+            .panel-principal {
+                padding: 18px 12px;
+            }
+
+            .tarjeta {
+                padding: 22px 14px;
+            }
+
+            .boton {
+                font-size: 12px;
+            }
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+    <!-- =====================================================
+         CONTENEDOR GENERAL DE LA PÁGINA
+         ===================================================== -->
+
+    <main class="contenedor">
+
+
+        <!-- =================================================
+             ENCABEZADO PRINCIPAL
+             ================================================= -->
+
+        <header class="encabezado">
+
+            <h1>Inventario. Gestión de Stock</h1>
+
+            <p>
+                Sistema de control de inventario
+            </p>
+
+        </header>
+
+
+        <!-- =================================================
+             PANEL CENTRAL DE ACCESO A LAS APLICACIONES
+             ================================================= -->
+
+        <section class="panel-principal">
+
+            <div class="titulo-seccion">
+
+                <h2>Acceso al sistema</h2>
+
+                <p>
+                    Seleccioná la versión que querés utilizar.
+                </p>
+
+            </div>
+
+
+            <!-- =============================================
+                 TARJETAS DE LAS DOS VERSIONES
+                 ============================================= -->
+
+            <div class="opciones">
+
+
+                <!-- =========================================
+                     A. VERSIÓN PARA COMPUTADORA
+                     
+                     IMPORTANTE:
+                     El enlace de esta aplicación se coloca
+                     en el atributo href del botón.
+                     ========================================= -->
+
+                <article class="tarjeta">
+
+                    <!-- Icono de computadora -->
+
+                    <div class="icono" aria-hidden="true">
+                        &#128187;
+                    </div>
+
+
+                    <!-- Título de la aplicación -->
+
+                    <h3>Versión para computadora</h3>
+
+
+                    <!-- Descripción -->
+
+                    <p>
+                        Accedé al sistema de gestión de stock
+                        desde una computadora de escritorio
+                        o una notebook.
+                    </p>
+
+
+                    <!-- =====================================
+                         LINK DE LA VERSIÓN PARA COMPUTADORA
+
+                         REEMPLAZAR:
+                         PEGAR_AQUI_EL_LINK_DE_LA_PC
+
+                         por la dirección web real de la
+                         aplicación para computadora.
+
+                         IMPORTANTE:
+                         Conservá las comillas del atributo
+                         href y no borres el resto del botón.
+                         ===================================== -->
+
+                    <a
+                        class="boton"
+                        href="PEGAR_AQUI_EL_LINK_DE_LA_PC"
+                        aria-label="Ingresar a la aplicación de computadora"
+                    >
+                        INGRESAR
+                    </a>
+
+                </article>
+
+
+
+                <!-- =========================================
+                     B. VERSIÓN WEB PARA CELULAR
+
+                     IMPORTANTE:
+                     El enlace de esta aplicación se coloca
+                     en el atributo href del botón.
+                     ========================================= -->
+
+                <article class="tarjeta">
+
+                    <!-- Icono de celular -->
+
+                    <div class="icono" aria-hidden="true">
+                        &#128241;
+                    </div>
+
+
+                    <!-- Título de la aplicación -->
+
+                    <h3>Versión web para celular</h3>
+
+
+                    <!-- Descripción -->
+
+                    <p>
+                        Ingresá al sistema desde tu teléfono
+                        móvil mediante el navegador web.
+                    </p>
+
+
+                    <!-- =====================================
+                         LINK DE LA VERSIÓN WEB PARA CELULAR
+
+                         REEMPLAZAR:
+                         PEGAR_AQUI_EL_LINK_DEL_CELULAR
+
+                         por la dirección web real de la
+                         aplicación para celular.
+
+                         IMPORTANTE:
+                         Conservá las comillas del atributo
+                         href y no borres el resto del botón.
+                         ===================================== -->
+
+                    <a
+                        class="boton"
+                        href="PEGAR_AQUI_EL_LINK_DEL_CELULAR"
+                        aria-label="Ingresar a la aplicación web para celular"
+                    >
+                        INGRESAR
+                    </a>
+
+                </article>
+
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             PIE DE PÁGINA
+             ================================================= -->
+
+        <footer class="pie">
+
+            <p>
+                Sistema de Gestión de Stock V.1.0
+            </p>
+
+        </footer>
+
+
+    </main>
+
+</body>
+
+</html>
