@@ -34,7 +34,8 @@
         .card {
             background: #fff;
             border-radius: 18px;
-            box-shadow: 0 10px 30px #0002
+            box-shadow: 0 10px 30px #0002;
+            transition: background 0.25s ease
         }
 
         .top {
@@ -271,12 +272,12 @@
                     id="newBtn">Nuevo inventario</button></div>
             <div id="fileStatus" class="scanstatus">Primero seleccioná la marca, el depósito y el archivo maestro.</div>
         </section>
-        <section class="card"><label>Escanear código de barras</label>
+        <section class="card" id="scanSection"><label>Escanear código de barras</label>
             <div class="scan">
                 <div>
                     <div class="scanbox"><input id="scanner" inputmode="numeric" autocomplete="off"
                             placeholder="Listo para escanear..." disabled><button class="dark" id="focusBtn"
-                            disabled>Activar lector</button></div>
+                            disabled>Activar lector</button><button id="undoBtn" style="background: #E33A1B; color: white;" disabled>Anular código</button></div>
                     <div class="hint">La lectora USB debe enviar Enter al terminar cada código. Se elimina
                         automáticamente el "_" inicial.</div>
                     <div id="scanStatus" class="scanstatus">Cargá el Excel para comenzar.</div>
@@ -308,10 +309,64 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script>
-        const COLORS = { "Deposito 22": "#000000", "Santa Rosa": "#FF0000", "Colon": "#6495ED", "Cerro": "#FFFF00", "CbaShopping": "#FF00FF", "Nuevocentro": "#FFA500" }; let catalog = new Map(), counted = new Map(), loaded = false; const $ = id => document.getElementById(id), brand = $("brand"), deposit = $("deposit"), file = $("file"), scanner = $("scanner"); function clean(v) { return String(v ?? "").trim() } function barcodeKey(v) { return clean(v).replace(/^_+/g, "") } function normHeader(v) { return clean(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") } function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])) } function setBg() { document.documentElement.style.setProperty("--dep", COLORS[deposit.value] || "#696969") } deposit.onchange = setBg;
-        $("loadBtn").onclick = async () => { if (!brand.value.trim() || !deposit.value) return alert("Ingresá la marca y seleccioná un depósito."); if (!file.files[0]) return alert("Seleccioná el archivo Excel maestro."); if (typeof XLSX === "undefined") return alert("No se pudo cargar el módulo Excel. Verificá la conexión a Internet."); try { const wb = XLSX.read(await file.files[0].arrayBuffer(), { type: "array" }), ws = wb.Sheets[wb.SheetNames[0]], rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }), h = rows[0].map(normHeader), ci = h.indexOf("codigo"), bi = h.indexOf("codigo de barras"), di = h.indexOf("descripcion del articulo"); if (ci < 0 || bi < 0 || di < 0) throw Error("No encuentro las columnas requeridas: Código, Código de Barras y Descripción del artículo."); catalog.clear(); counted.clear(); for (let i = 1; i < rows.length; i++) { let r = rows[i], bc = barcodeKey(r[bi]); if (bc) catalog.set(bc, { code: clean(r[ci]), barcode: bc, desc: clean(r[di]) }) } if (!catalog.size) throw Error("No encontré códigos de barras válidos en el archivo."); loaded = true; scanner.disabled = false; $("focusBtn").disabled = false; $("finishBtn").disabled = false; $("fileStatus").textContent = `Catálogo cargado: ${catalog.size} productos.`; $("scanStatus").textContent = "Lector activo. Podés comenzar a escanear."; render(); focusScanner() } catch (e) { alert(e.message) } }; function focusScanner() { if (loaded) { scanner.focus(); scanner.select() } } $("focusBtn").onclick = focusScanner; scanner.onkeydown = e => { if (e.key !== "Enter") return; e.preventDefault(); let bc = barcodeKey(scanner.value); scanner.value = ""; if (!bc) return focusScanner(); if (counted.has(bc)) counted.get(bc).qty++; else if (catalog.has(bc)) { let p = catalog.get(bc); counted.set(bc, { ...p, qty: 1 }) } else counted.set(bc, { code: "", barcode: bc, desc: "Código no Encontrado", qty: 1, unknown: true }); let p = counted.get(bc); $("scanStatus").textContent = `✓ ${p.desc}: ${p.qty} unidad${p.qty === 1 ? "" : "es"}`; render(); focusScanner() }; scanner.onblur = () => { if (loaded) setTimeout(focusScanner, 80) };
+        const COLORS = { "Deposito 22": "#000000", "Santa Rosa": "#FF0000", "Colon": "#6495ED", "Cerro": "#FFFF00", "CbaShopping": "#FF00FF", "Nuevocentro": "#FFA500" }; let catalog = new Map(), counted = new Map(), loaded = false, undoMode = false; const $ = id => document.getElementById(id), brand = $("brand"), deposit = $("deposit"), file = $("file"), scanner = $("scanner"), scanSection = $("scanSection"), undoBtn = $("undoBtn"); function clean(v) { return String(v ?? "").trim() } function barcodeKey(v) { return clean(v).replace(/^_+/g, "") } function normHeader(v) { return clean(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") } function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])) } function setBg() { document.documentElement.style.setProperty("--dep", COLORS[deposit.value] || "#696969") } deposit.onchange = setBg;
+        $("loadBtn").onclick = async () => { if (!brand.value.trim() || !deposit.value) return alert("Ingresá la marca y seleccioná un depósito."); if (!file.files[0]) return alert("Seleccioná el archivo Excel maestro."); if (typeof XLSX === "undefined") return alert("No se pudo cargar el módulo Excel. Verificá la conexión a Internet."); try { const wb = XLSX.read(await file.files[0].arrayBuffer(), { type: "array" }), ws = wb.Sheets[wb.SheetNames[0]], rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }), h = rows[0].map(normHeader), ci = h.indexOf("codigo"), bi = h.indexOf("codigo de barras"), di = h.indexOf("descripcion del articulo"); if (ci < 0 || bi < 0 || di < 0) throw Error("No encuentro las columnas requeridas: Código, Código de Barras y Descripción del artículo."); catalog.clear(); counted.clear(); for (let i = 1; i < rows.length; i++) { let r = rows[i], bc = barcodeKey(r[bi]); if (bc) catalog.set(bc, { code: clean(r[ci]), barcode: bc, desc: clean(r[di]) }) } if (!catalog.size) throw Error("No encontré códigos de barras válidos en el archivo."); loaded = true; scanner.disabled = false; $("focusBtn").disabled = false; $("finishBtn").disabled = false; undoBtn.disabled = false; $("fileStatus").textContent = `Catálogo cargado: ${catalog.size} productos.`; $("scanStatus").textContent = "Lector activo. Podés comenzar a escanear."; render(); focusScanner() } catch (e) { alert(e.message) } }; function focusScanner() { if (loaded) { scanner.focus(); scanner.select() } } $("focusBtn").onclick = focusScanner;
+
+        undoBtn.onclick = () => {
+            if (scanner.disabled) return;
+            undoMode = !undoMode;
+            if (undoMode) {
+                scanSection.style.background = "#E33A1B";
+                scanSection.style.color = "#ffffff";
+                undoBtn.style.outline = "2px solid #ffffff";
+                $("scanStatus.textContent" !== undefined ? "scanStatus" : "").textContent = "Modo anulación activo: escanee el código a descontar.";
+            } else {
+                scanSection.style.background = "#fff";
+                scanSection.style.color = "var(--ink)";
+                undoBtn.style.outline = "none";
+                $("scanStatus").textContent = "Lector activo. Podés comenzar a escanear.";
+            }
+            focusScanner();
+        };
+
+        scanner.onkeydown = e => {
+            if (e.key !== "Enter") return;
+            e.preventDefault();
+            let bc = barcodeKey(scanner.value);
+            scanner.value = "";
+            if (!bc) return focusScanner();
+
+            if (undoMode) {
+                if (counted.has(bc)) {
+                    let p = counted.get(bc);
+                    p.qty--;
+                    if (p.qty <= 0) {
+                        counted.delete(bc);
+                        $("scanStatus").textContent = `🗑️ Artículo eliminado del conteo: ${p.desc}`;
+                    } else {
+                        $("scanStatus").textContent = `🗑️ Descontada 1 unidad de ${p.desc} (Quedan: ${p.qty})`;
+                    }
+                } else {
+                    $("scanStatus").textContent = `⚠️ El código ${bc} no se encuentra en el listado actual.`;
+                }
+                undoMode = false;
+                scanSection.style.background = "#fff";
+                scanSection.style.color = "var(--ink)";
+                undoBtn.style.outline = "none";
+            } else {
+                if (counted.has(bc)) counted.get(bc).qty++;
+                else if (catalog.has(bc)) { let p = catalog.get(bc); counted.set(bc, { ...p, qty: 1 }) }
+                else counted.set(bc, { code: "", barcode: bc, desc: "Código no Encontrado", qty: 1, unknown: true });
+                let p = counted.get(bc); 
+                $("scanStatus").textContent = `✓ ${p.desc}: ${p.qty} unidad${p.qty === 1 ? "" : "es"}`;
+            }
+            render(); 
+            focusScanner();
+        };
+
+        scanner.onblur = () => { if (loaded) setTimeout(focusScanner, 80) };
         function render() { let list = [...counted.values()]; $("rows").textContent = list.length; $("units").textContent = list.reduce((a, p) => a + p.qty, 0); $("unknown").textContent = list.filter(p => p.unknown).length; $("empty").style.display = list.length ? "none" : "block"; $("tbody").innerHTML = list.map(p => `<tr class="${p.unknown ? "notfound" : ""}"><td>${esc(p.code)}</td><td>${esc(p.barcode)}</td><td>${esc(p.desc)}</td><td class="qty">${p.qty}</td></tr>`).join("") }
-        function slug(s) { return clean(s).replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, "_") } $("finishBtn").onclick = () => { if (!counted.size) return alert("No hay productos escaneados."); let d = new Date(), date = String(d.getDate()).padStart(2, "0") + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + d.getFullYear(), name = `Inventario_${slug(brand.value)}_${slug(deposit.value)}_${date}.xlsx`, out = [["Código", "Código de Barras", "Descripción del artículo", "Cantidad"], ...counted.values().map(p => [p.code, p.barcode, p.desc, p.qty])], wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet(out); ws["!cols"] = [{ wch: 16 }, { wch: 20 }, { wch: 42 }, { wch: 12 }]; XLSX.utils.book_append_sheet(wb, ws, "Inventario"); XLSX.writeFile(wb, name); setTimeout(() => window.open("https://wa.me/5493513161661", "_blank"), 500) }; $("newBtn").onclick = () => { if (!confirm("¿Comenzar un nuevo inventario? Se borrará el conteo actual.")) return; counted.clear(); catalog.clear(); loaded = false; file.value = ""; scanner.value = ""; scanner.disabled = true; $("focusBtn").disabled = true; $("finishBtn").disabled = true; $("fileStatus").textContent = "Primero seleccioná la marca, el depósito y el archivo maestro."; $("scanStatus").textContent = "Cargá el Excel para comenzar."; render() }; setBg(); render();</script>
+        function slug(s) { return clean(s).replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, "_") } $("finishBtn").onclick = () => { if (!counted.size) return alert("No hay productos escaneados."); let d = new Date(), date = String(d.getDate()).padStart(2, "0") + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + d.getFullYear(), name = `Inventario_${slug(brand.value)}_${slug(deposit.value)}_${date}.xlsx`, out = [["Código", "Código de Barras", "Descripción del artículo", "Cantidad"], ...counted.values().map(p => [p.code, p.barcode, p.desc, p.qty])], wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet(out); ws["!cols"] = [{ wch: 16 }, { wch: 20 }, { wch: 42 }, { wch: 12 }]; XLSX.utils.book_append_sheet(wb, ws, "Inventario"); XLSX.writeFile(wb, name); setTimeout(() => window.open("https://wa.me/5493513161661", "_blank"), 500) }; $("newBtn").onclick = () => { if (!confirm("¿Comenzar un nuevo inventario? Se borrará el conteo actual.")) return; counted.clear(); catalog.clear(); loaded = false; file.value = ""; scanner.value = ""; scanner.disabled = true; $("focusBtn").disabled = true; $("finishBtn").disabled = true; undoBtn.disabled = true; undoMode = false; scanSection.style.background = "#fff"; scanSection.style.color = "var(--ink)"; undoBtn.style.outline = "none"; $("fileStatus").textContent = "Primero seleccioná la marca, el depósito y el archivo maestro."; $("scanStatus").textContent = "Cargá el Excel para comenzar."; render() }; setBg(); render();</script>
 </body>
 
 </html>
