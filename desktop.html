@@ -312,7 +312,10 @@
                 <div>
                     <div class="scanbox"><input id="scanner" inputmode="numeric" autocomplete="off"
                             placeholder="Listo para escanear..." disabled><button id="focusBtn"
-                            style="background: rgba(17, 24, 39, 0.2); color: white;" disabled>Lector activo</button><button id="undoBtn" style="background: rgba(227, 58, 27, 0.2); color: white;" disabled>Anular código</button></div>
+                            style="background: rgba(17, 24, 39, 0.2); color: white;" disabled>Lector
+                            activo</button><button id="undoBtn"
+                            style="background: rgba(227, 58, 27, 0.2); color: white;" disabled>Anular código</button>
+                    </div>
                     <div class="hint">La lectora USB de CB está activa continuamente.</div>
                     <div id="scanStatus" class="scanstatus">Cargá el Excel para comenzar.</div>
                 </div><button class="primary" id="finishBtn" disabled>Finalizar y guardar inventario</button>
@@ -343,13 +346,15 @@
     </div>
 
     <footer class="page-footer">
-        <div class="page-footer-copy">© 2026 Peinart. Inventario. Gestión de Stock. Todos los derechos reservados. v1.2.007</div>
-        <a class="page-footer-social" href="https://www.instagram.com/peinartok/" target="_blank" rel="noopener noreferrer">Instagram</a>
+        <div class="page-footer-copy">© 2026 Peinart. Inventario. Gestión de Stock. Todos los derechos reservados.
+            v1.2.007</div>
+        <a class="page-footer-social" href="https://www.instagram.com/peinartok/" target="_blank"
+            rel="noopener noreferrer">Instagram</a>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script>
-        const COLORS = { "Deposito 22": "#000000", "Santa Rosa": "#FF0000", "Colon": "#6495ED", "Cerro": "#FFFF00", "CbaShopping": "#FF00FF", "Nuevocentro": "#FFA500" }; let catalog = new Map(), counted = new Map(), loaded = false, undoMode = false; const $= id => document.getElementById(id), brand =$("brand"), deposit = $("deposit"), file = $("file"), scanner = $("scanner"), scanSection = $("scanSection"), undoBtn = $("undoBtn"), focusBtn = $("focusBtn"); function clean(v) { return String(v ?? "").trim() } function barcodeKey(v) { return clean(v).replace(/^_+/g, "") } function normHeader(v) { return clean(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") } function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])) } function setBg() { document.documentElement.style.setProperty("--dep", COLORS[deposit.value] || "#696969") } deposit.onchange = setBg;
+        const COLORS = { "Deposito 22": "#000000", "Santa Rosa": "#FF0000", "Colon": "#6495ED", "Cerro": "#FFFF00", "CbaShopping": "#FF00FF", "Nuevocentro": "#FFA500" }; let catalog = new Map(), counted = new Map(), loaded = false, undoMode = false; const $ = id => document.getElementById(id), brand = $("brand"), deposit = $("deposit"), file = $("file"), scanner = $("scanner"), scanSection = $("scanSection"), undoBtn = $("undoBtn"), focusBtn = $("focusBtn"); function clean(v) { return String(v ?? "").trim() } function barcodeKey(v) { return clean(v).replace(/^_+/g, "") } function normHeader(v) { return clean(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") } function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])) } function setBg() { document.documentElement.style.setProperty("--dep", COLORS[deposit.value] || "#696969") } deposit.onchange = setBg;
         $("loadBtn").onclick = async () => { if (!brand.value.trim() || !deposit.value) return alert("Ingresá la marca y seleccioná un depósito."); if (!file.files[0]) return alert("Seleccioná el archivo Excel maestro."); if (typeof XLSX === "undefined") return alert("No se pudo cargar el módulo Excel. Verificá la conexión a Internet."); try { const wb = XLSX.read(await file.files[0].arrayBuffer(), { type: "array" }), ws = wb.Sheets[wb.SheetNames[0]], rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }), h = rows[0].map(normHeader), ci = h.indexOf("codigo"), bi = h.indexOf("codigo de barras"), di = h.indexOf("descripcion del articulo"); if (ci < 0 || bi < 0 || di < 0) throw Error("No encuentro las columnas requeridas: Código, Código de Barras y Descripción del artículo."); catalog.clear(); counted.clear(); for (let i = 1; i < rows.length; i++) { let r = rows[i], bc = barcodeKey(r[bi]); if (bc) catalog.set(bc, { code: clean(r[ci]), barcode: bc, desc: clean(r[di]) }) } if (!catalog.size) throw Error("No encontré códigos de barras válidos en el archivo."); loaded = true; scanner.disabled = false; focusBtn.disabled = false; focusBtn.style.background = "#111827"; focusBtn.style.color = "#ffffff"; undoBtn.disabled = false; undoBtn.style.background = "#E33A1B"; undoBtn.style.color = "#ffffff"; $("finishBtn").disabled = false; $("fileStatus").textContent = `Catálogo cargado: ${catalog.size} productos.`; $("scanStatus").textContent = "Lector activo. Podés comenzar a escanear."; render(); focusScanner() } catch (e) { alert(e.message) } }; function focusScanner() { if (loaded) { scanner.focus(); scanner.select() } } focusBtn.onclick = focusScanner;
 
         undoBtn.onclick = () => {
