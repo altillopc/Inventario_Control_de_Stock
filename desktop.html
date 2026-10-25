@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title><div>Inventario_Control_de_Stock_desktop_1.2.006</div></title>
+    <title>Inventario_Control_de_Stock_app_web_desktop_1.2.007</title>
     <style>
         :root {
             --seldep: #2ba91a;
@@ -151,6 +151,41 @@
             margin-top: 7px
         }
 
+        .page-footer {
+            max-width: 1100px;
+            margin: 24px auto 0;
+            padding: 24px 0;
+            border-top: 1px solid #e4e7ec;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            color: #475467;
+            font-size: 13px;
+            background: transparent;
+        }
+
+        .page-footer-social {
+            color: #101828;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .page-footer-social:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 640px) {
+            .page-footer {
+                margin-left: 16px;
+                margin-right: 16px;
+                padding: 18px 0;
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+
         .stats {
             display: flex;
             gap: 10px;
@@ -278,7 +313,7 @@
                     <div class="scanbox"><input id="scanner" inputmode="numeric" autocomplete="off"
                             placeholder="Listo para escanear..." disabled><button id="focusBtn"
                             style="background: rgba(17, 24, 39, 0.2); color: white;" disabled>Lector activo</button><button id="undoBtn" style="background: rgba(227, 58, 27, 0.2); color: white;" disabled>Anular código</button></div>
-                    <div class="hint">La lectora de CB está activa continuamente.</div>
+                    <div class="hint">La lectora USB de CB está activa continuamente.</div>
                     <div id="scanStatus" class="scanstatus">Cargá el Excel para comenzar.</div>
                 </div><button class="primary" id="finishBtn" disabled>Finalizar y guardar inventario</button>
             </div>
@@ -306,6 +341,12 @@
             <div class="footer">Solo se incluirán en el Excel final los productos que hayan sido escaneados.</div>
         </section>
     </div>
+
+    <footer class="page-footer">
+        <div class="page-footer-copy">© 2026 Peinart. Inventario. Gestión de Stock. Todos los derechos reservados. v1.2.007</div>
+        <a class="page-footer-social" href="https://www.instagram.com/peinartok/" target="_blank" rel="noopener noreferrer">Instagram</a>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script>
         const COLORS = { "Deposito 22": "#000000", "Santa Rosa": "#FF0000", "Colon": "#6495ED", "Cerro": "#FFFF00", "CbaShopping": "#FF00FF", "Nuevocentro": "#FFA500" }; let catalog = new Map(), counted = new Map(), loaded = false, undoMode = false; const $= id => document.getElementById(id), brand =$("brand"), deposit = $("deposit"), file = $("file"), scanner = $("scanner"), scanSection = $("scanSection"), undoBtn = $("undoBtn"), focusBtn = $("focusBtn"); function clean(v) { return String(v ?? "").trim() } function barcodeKey(v) { return clean(v).replace(/^_+/g, "") } function normHeader(v) { return clean(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") } function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])) } function setBg() { document.documentElement.style.setProperty("--dep", COLORS[deposit.value] || "#696969") } deposit.onchange = setBg;
