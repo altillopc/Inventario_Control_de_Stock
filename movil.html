@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-    <title>Inventario_Control_de_Stock_movil_1.3.003</title>
+    <title>Inventario_Control_de_Stock_movil_vertical</title>
     <style>
         :root {
             --bg: #696969
@@ -363,10 +363,22 @@
             e.target.value = '';
         };
 
-        $('start').onclick = () => {
+        $('start').onclick = async () => {
             if (!$('brand').value.trim()) return alert('Ingresá la marca.');
             if (!$('deposit').value) return alert('Seleccioná el depósito.');
             if (!catalog.length) return alert('Primero cargá el Excel maestro.');
+
+            // Intentar mantener la orientación vertical en navegadores que lo permitan.
+            // Algunos navegadores requieren pantalla completa o una app instalada; si no se permite,
+            // se continúa normalmente sin interrumpir el inventario.
+            try {
+                if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                    await screen.orientation.lock('portrait');
+                }
+            } catch (e) {
+                // El bloqueo de orientación no está disponible en todos los contextos móviles.
+            }
+
             counts = new Map();
             $('setup').classList.add('hidden');
             $('app').classList.remove('hidden');
