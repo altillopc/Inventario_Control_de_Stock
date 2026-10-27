@@ -266,8 +266,228 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script>
-        const colors = {'Deposito 22': '#696969', 'Santa Rosa': '#FF0000', 'Colon': '#6495ED', 'Cerro': '#FFFF00', 'CbaShopping': '#FF00FF', 'Nuevocentro': '#FF7F50'}, K = 'peinart_catalog_v1'; let catalog = [], counts = new Map(), scanner = null, running = false, last = 0; const $ = x => document.getElementById(x), clean = x => String(x ?? '').trim().replace(/^_+/, '');
-        function esc(x) {return String(x).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[m]))} function info() {$('info').innerHTML = catalog.length ? '<span class="ok">Catálogo guardado: ' + catalog.length + ' productos.</span>' : '<span class="warn">No hay catálogo guardado.</span>'} try {catalog = JSON.parse(localStorage.getItem(K) || 'null')?.catalog || []} catch { } info(); $('deposit').onchange = () => document.body.style.background = colors[$('deposit').value] || '#696969'; $('load').onclick = () => $('file').click(); $('file').onchange = async e => {let f = e.target.files[0]; if (!f) return; try {let w = XLSX.read(await f.arrayBuffer(), {type: 'array'}), r = XLSX.utils.sheet_to_json(w.Sheets[w.SheetNames[0]], {header: 1, defval: ''}), h = r[0].map(String), ci = h.indexOf('Código'), bi = h.indexOf('Código de Barras'), di = h.indexOf('Descripción del artículo'); if (bi < 0 || di < 0) throw Error('Faltan las columnas requeridas.'); catalog = r.slice(1).map(x => ({code: ci >= 0 ? clean(x[ci]) : '', barcode: clean(x[bi]), desc: clean(x[di])})).filter(x => x.barcode); localStorage.setItem(K, JSON.stringify({catalog, savedAt: new Date().toISOString()})); info(); alert('Catálogo cargado y guardado en este dispositivo.')} catch (x) {alert(x.message)} e.target.value = ''}; $('start').onclick = () => {if (!$('brand').value.trim()) return alert('Ingresá la marca.'); if (!$('deposit').value) return alert('Seleccioná el depósito.'); if (!catalog.length) return alert('Primero cargá el Excel maestro.'); counts = new Map(); $('setup').classList.add('hidden'); $('app').classList.remove('hidden'); render()}; function addScan(raw) {let b = clean(raw); if (!b) return; let p = catalog.find(x => x.barcode === b), o = counts.get(b) || {barcode: b, code: p?.code || '', desc: p?.desc || 'Código no Encontrado', qty: 0}; o.qty++; counts.set(b, o); $('lc').textContent = 'Código: ' + b; $('ld').textContent = o.desc; $('lq').textContent = o.qty + ' unidades'; render()} function render() {let a = [...counts.values()]; $('pc').textContent = a.length; $('uc').textContent = a.reduce((s, x) => s + x.qty, 0); $('rows').innerHTML = a.length ? a.map(x => '<tr><td>' + esc(x.code) + '</td><td>' + esc(x.barcode) + '</td><td>' + esc(x.desc) + '</td><td><b>' + x.qty + '</b></td></tr>').join('') : '<tr><td colspan="4">Todavía no hay productos.</td></tr>'} $('add').onclick = () => {addScan($('manual').value); $('manual').value = ''; $('manual').focus()}; $('manual').onkeydown = e => {if (e.key === 'Enter') $('add').click()}; async function startCam() {if (running) return; try {scanner = new Html5Qrcode('reader'); await scanner.start({facingMode: 'environment'}, {fps: 12, qrbox: {width: 280, height: 110}}, d => {let n = Date.now(); if (n - last < 900) return; last = n; addScan(d)}, () => { }); running = true; $('status').textContent = 'Cámara activa — apuntá al próximo código.'; $('cam').classList.add('hidden'); $('stop').classList.remove('hidden')} catch (e) {alert('No se pudo iniciar la cámara. Verificá el permiso y que la página use HTTPS.')} } async function stopCam() {if (scanner) {try {await scanner.stop(); await scanner.clear()} catch { } } scanner = null; running = false; $('status').textContent = 'Cámara detenida.'; $('cam').classList.remove('hidden'); $('stop').classList.add('hidden')} $('cam').onclick = startCam; $('stop').onclick = stopCam; $('finish').onclick = () => {let a = [...counts.values()]; if (!a.length) return alert('No hay productos escaneados.'); let w = XLSX.utils.book_new(), d = [['Código', 'Código de Barras', 'Descripción del artículo', 'Cantidad'], ...a.map(x => [x.code, x.barcode, x.desc, x.qty])]; XLSX.utils.book_append_sheet(w, XLSX.utils.aoa_to_sheet(d), 'Inventario'); let t = new Date(), dd = String(t.getDate()).padStart(2, '0'), mm = String(t.getMonth() + 1).padStart(2, '0'), brand = $('brand').value.trim().replace(/[\\/:*?"<>|]/g, '_'); XLSX.writeFile(w, `Inventario_${brand}_${$('deposit').value}_${dd}-${mm}-${t.getFullYear()}.xlsx`); window.open('https://wa.me/5493513161661', '_blank')}; $('new').onclick = async () => {await stopCam(); counts = new Map(); $('app').classList.add('hidden'); $('setup').classList.remove('hidden')}; render();</script>
+                const colors = {
+            'Deposito 22': '#696969',
+            'Santa Rosa': '#FF0000',
+            'Colon': '#6495ED',
+            'Cerro': '#FFFF00',
+            'CbaShopping': '#FF00FF',
+            'Nuevocentro': '#FF7F50'
+        }, K = 'peinart_catalog_v1';
+
+        let catalog = [], counts = new Map(), scanner = null, running = false;
+        let cameraPaused = false, cameraPauseTimer = null, audioContext = null;
+
+        const $ = x => document.getElementById(x);
+        const clean = x => String(x ?? '').trim().replace(/^_+/, '');
+
+        function esc(x) {
+            return String(x).replace(/[&<>"']/g, m => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[m]));
+        }
+
+        function info() {
+            $('info').innerHTML = catalog.length
+                ? '<span class="ok">Catálogo guardado: ' + catalog.length + ' productos.</span>'
+                : '<span class="warn">No hay catálogo guardado.</span>';
+        }
+
+        // Inicializa el audio desde una acción del usuario para permitir la reproducción en móviles.
+        async function initAudio() {
+            try {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextClass) return false;
+                if (!audioContext) audioContext = new AudioContextClass();
+                if (audioContext.state === 'suspended') await audioContext.resume();
+                return audioContext.state === 'running';
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // Pitido corto, con la ganancia al máximo permitido por la API de audio del navegador.
+        async function playBeep() {
+            const ready = await initAudio();
+            if (!ready || !audioContext) return;
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                const now = audioContext.currentTime;
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(1800, now);
+                gain.gain.setValueAtTime(1, now);
+                gain.gain.setValueAtTime(1, now + 0.09);
+                gain.gain.setValueAtTime(0, now + 0.12);
+                oscillator.connect(gain);
+                gain.connect(audioContext.destination);
+                oscillator.start(now);
+                oscillator.stop(now + 0.12);
+            } catch (e) {
+                // Si el dispositivo bloquea el audio, el inventario sigue funcionando normalmente.
+            }
+        }
+
+        try {
+            catalog = JSON.parse(localStorage.getItem(K) || 'null')?.catalog || [];
+        } catch { }
+        info();
+
+        $('deposit').onchange = () => {
+            document.body.style.background = colors[$('deposit').value] || '#696969';
+        };
+        $('load').onclick = () => $('file').click();
+        $('file').onchange = async e => {
+            let f = e.target.files[0];
+            if (!f) return;
+            try {
+                let w = XLSX.read(await f.arrayBuffer(), { type: 'array' });
+                let r = XLSX.utils.sheet_to_json(w.Sheets[w.SheetNames[0]], { header: 1, defval: '' });
+                let h = r[0].map(String);
+                let ci = h.indexOf('Código'), bi = h.indexOf('Código de Barras'), di = h.indexOf('Descripción del artículo');
+                if (bi < 0 || di < 0) throw Error('Faltan las columnas requeridas. Código, Código de Barras, Descripción del artículo, Stock');
+                catalog = r.slice(1).map(x => ({
+                    code: ci >= 0 ? clean(x[ci]) : '',
+                    barcode: clean(x[bi]),
+                    desc: clean(x[di])
+                })).filter(x => x.barcode);
+                localStorage.setItem(K, JSON.stringify({ catalog, savedAt: new Date().toISOString() }));
+                info();
+                alert('Catálogo cargado y guardado en este dispositivo.');
+            } catch (x) {
+                alert(x.message);
+            }
+            e.target.value = '';
+        };
+
+        $('start').onclick = () => {
+            if (!$('brand').value.trim()) return alert('Ingresá la marca.');
+            if (!$('deposit').value) return alert('Seleccioná el depósito.');
+            if (!catalog.length) return alert('Primero cargá el Excel maestro.');
+            counts = new Map();
+            $('setup').classList.add('hidden');
+            $('app').classList.remove('hidden');
+            render();
+        };
+
+        function addScan(raw) {
+            let b = clean(raw);
+            if (!b) return false;
+            let p = catalog.find(x => x.barcode === b);
+            let o = counts.get(b) || {
+                barcode: b,
+                code: p?.code || '',
+                desc: p?.desc || 'Código no Encontrado',
+                qty: 0
+            };
+            o.qty++;
+            counts.set(b, o);
+            $('lc').textContent = 'Código: ' + b;
+            $('ld').textContent = o.desc;
+            $('lq').textContent = o.qty + ' unidades';
+            render();
+            return true;
+        }
+
+        function render() {
+            let a = [...counts.values()];
+            $('pc').textContent = a.length;
+            $('uc').textContent = a.reduce((s, x) => s + x.qty, 0);
+            $('rows').innerHTML = a.length
+                ? a.map(x => '<tr><td>' + esc(x.code) + '</td><td>' + esc(x.barcode) + '</td><td>' + esc(x.desc) + '</td><td><b>' + x.qty + '</b></td></tr>').join('')
+                : '<tr><td colspan="4">Todavía no hay productos.</td></tr>';
+        }
+
+        // La carga manual emite un pitido, pero nunca aplica la pausa de la cámara.
+        $('add').onclick = () => {
+            if (addScan($('manual').value)) playBeep();
+            $('manual').value = '';
+            $('manual').focus();
+        };
+        $('manual').onkeydown = e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                $('add').click();
+            }
+        };
+
+        async function startCam() {
+            if (running) return;
+            try {
+                // Desbloquea el audio durante la pulsación del botón en navegadores móviles.
+                await initAudio();
+                scanner = new Html5Qrcode('reader');
+                await scanner.start(
+                    { facingMode: 'environment' },
+                    { fps: 12, qrbox: { width: 280, height: 110 } },
+                    d => {
+                        // Durante los dos segundos de pausa, ignorar completamente cualquier lectura.
+                        if (cameraPaused) return;
+                        if (!clean(d)) return;
+                        cameraPaused = true;
+                        playBeep();
+                        addScan(d);
+                        cameraPauseTimer = setTimeout(() => {
+                            cameraPaused = false;
+                            cameraPauseTimer = null;
+                        }, 2000);
+                    },
+                    () => { }
+                );
+                running = true;
+                $('status').textContent = 'Cámara activa — apuntá al próximo código.';
+                $('cam').classList.add('hidden');
+                $('stop').classList.remove('hidden');
+            } catch (e) {
+                scanner = null;
+                running = false;
+                alert('No se pudo iniciar la cámara. Verificá el permiso y que la página use HTTPS.');
+            }
+        }
+
+        async function stopCam() {
+            if (cameraPauseTimer) clearTimeout(cameraPauseTimer);
+            cameraPauseTimer = null;
+            cameraPaused = false;
+            if (scanner) {
+                try {
+                    await scanner.stop();
+                    await scanner.clear();
+                } catch { }
+            }
+            scanner = null;
+            running = false;
+            $('status').textContent = 'Cámara detenida.';
+            $('cam').classList.remove('hidden');
+            $('stop').classList.add('hidden');
+        }
+
+        $('cam').onclick = startCam;
+        $('stop').onclick = stopCam;
+
+        $('finish').onclick = () => {
+            let a = [...counts.values()];
+            if (!a.length) return alert('No hay productos escaneados.');
+            let w = XLSX.utils.book_new();
+            let d = [['Código', 'Código de Barras', 'Descripción del artículo', 'Cantidad'], ...a.map(x => [x.code, x.barcode, x.desc, x.qty])];
+            XLSX.utils.book_append_sheet(w, XLSX.utils.aoa_to_sheet(d), 'Inventario');
+            let t = new Date();
+            let dd = String(t.getDate()).padStart(2, '0');
+            let mm = String(t.getMonth() + 1).padStart(2, '0');
+            let brand = $('brand').value.trim().replace(/[\\/:*?"<>|]/g, '_');
+            XLSX.writeFile(w, `Inventario_${brand}_${$('deposit').value}_${dd}-${mm}-${t.getFullYear()}.xlsx`);
+            window.open('https://wa.me/5493513161661', '_blank');
+        };
+
+        $('new').onclick = async () => {
+            await stopCam();
+            counts = new Map();
+            $('app').classList.add('hidden');
+            $('setup').classList.remove('hidden');
+        };
+
+        render();
+</script>
 </body>
 
 </html>
