@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Inventario_Control_de_Stock_desktop_1.2.008</title>
+    <title>Inventario_Control_de_Stock_desktop_1.2.009</title>
     <style>
         :root {
             --seldep: #2ba91a;
@@ -148,7 +148,8 @@
         }
 
         .page-footer {
-            max-width: 1100px;
+            width: calc(100% - 44px);
+            max-width: 1156px;
             margin: 24px auto 0;
             padding: 24px 0;
             border-top: 1px solid #e4e7ec;
@@ -171,10 +172,16 @@
             text-decoration: underline
         }
 
+        @media(max-width:800px) {
+            .page-footer {
+                width: calc(100% - 24px);
+            }
+        }
+
         @media(max-width:640px) {
             .page-footer {
-                margin-left: 16px;
-                margin-right: 16px;
+                margin-left: auto;
+                margin-right: auto;
                 padding: 18px 0;
                 align-items: flex-start;
                 flex-direction: column;
@@ -337,12 +344,12 @@
                 </table>
                 <div id="empty" class="empty">No hay productos escaneados todavía.</div>
             </div>
-            <div class="footer">Solo se incluirán en el Excel final los productos que hayan sido escaneados.</div>
+            <div class="footer">El Excel final incluirá todos los productos escaneados, incluso los que figuren como "Código no Encontrado".</div>
         </section>
     </div>
     <footer class="page-footer">
         <div class="page-footer-copy">© 2026 Peinart. Inventario. Gestión de Stock. Todos los derechos reservados.
-            v1.2.008</div><a class="page-footer-social" href="https://www.instagram.com/peinartok/" target="_blank"
+            v1.2.009</div><a class="page-footer-social" href="https://www.instagram.com/peinartok/" target="_blank"
             rel="noopener noreferrer">Instagram</a>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
