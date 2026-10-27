@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-    <title>Inventario_Control_de_Stock_movil_1.3.001</title>
+    <title>Inventario_Control_de_Stock_movil_1.3.003</title>
     <style>
         :root {
             --bg: #696969
@@ -106,11 +106,14 @@
             background: #344054;
             border-radius: 16px;
             overflow: hidden;
-            min-height: 130px
+            height: 220px;
+            min-height: 0
         }
 
         #reader video {
-            width: 100% !important
+            width: 100% !important;
+            height: 220px !important;
+            object-fit: cover
         }
 
         .status {
@@ -345,7 +348,7 @@
                 let r = XLSX.utils.sheet_to_json(w.Sheets[w.SheetNames[0]], { header: 1, defval: '' });
                 let h = r[0].map(String);
                 let ci = h.indexOf('Código'), bi = h.indexOf('Código de Barras'), di = h.indexOf('Descripción del artículo');
-                if (bi < 0 || di < 0) throw Error('Faltan las columnas requeridas. Código, Código de Barras, Descripción del artículo, Stock');
+                if (bi < 0 || di < 0) throw Error('Faltan las columnas requeridas.');
                 catalog = r.slice(1).map(x => ({
                     code: ci >= 0 ? clean(x[ci]) : '',
                     barcode: clean(x[bi]),
